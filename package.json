@@ -1,0 +1,7 @@
+{
+  "name": "all-downloader-backend",
+  "version": "1.0.0",
+  "dependencies": {
+    "btch-downloader": "^2.3.3"
+  }
+}
