@@ -1,7 +1,8 @@
 {
-  "name": "all-downloader-backend",
+  "name": "all-downloader-api",
   "version": "1.0.0",
   "dependencies": {
-    "btch-downloader": "^2.3.3"
+    "instagranode": "^0.3.0",
+    "@kelvdra/scraper": "^1.0.43-rc.3"
   }
 }
