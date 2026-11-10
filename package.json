@@ -2,7 +2,6 @@
   "name": "all-downloader-api",
   "version": "1.0.0",
   "dependencies": {
-    "instagranode": "^0.3.0",
-    "@kelvdra/scraper": "^1.0.43-rc.3"
+    "rahad-all-downloader-v2": "^1.0.0"
   }
 }
