@@ -1,4 +1,5 @@
-const { igdl, ttdl, fbdown, twitter, youtube } = require('btch-downloader');
+import { InstagraNode } from 'instagranode';
+import { ytmp3, ytdl } from '@kelvdra/scraper';
 
 export default async function handler(req, res) {
     // CORS Headers
@@ -18,58 +19,55 @@ export default async function handler(req, res) {
         const { url, platform } = body || {};
         if (!url) return res.status(400).json({ status: false, msg: 'URL required' });
 
-        // --- 1. SPECIAL LOGIC FOR INSTAGRAM PROFILE (PFP) ---
+        // --- 1. INSTAGRAM PROFILE PICTURE (PFP) ---
         const isProfile = platform === 'instagram' && !url.match(/(\/p\/|\/reel\/|\/video\/)/);
         
         if (isProfile) {
-            const urlObj = new URL(url);
-            const path = urlObj.pathname.replace(/^\/|\/$/g, '');
-            const username = path.split('/')[0];
-
-            if (!username) return res.status(400).json({ status: false, msg: 'Invalid username' });
-
-            // Instagram Internal API Call
-            const igApiUrl = `https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`;
+            const username = url.split('/').filter(Boolean).pop();
             
-            const response = await fetch(igApiUrl, {
-                headers: {
-                    'X-IG-App-ID': '936619743392459', 
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                }
-            });
+            // Use instagranode (browser-like headers)
+            const ig = new InstagraNode({ browser: "chrome-mac" });
+            const profile = await ig.searchProfile(username);
+            
+            if (!profile) throw new Error('Profile not found.');
 
-            if (!response.ok) {
-                throw new Error('Profile private hai ya Instagram ne request block ki hai.');
-            }
-
-            const data = await response.json();
-            const hdPic = data?.data?.user?.hd_profile_pic_url_info?.url || data?.data?.user?.profile_pic_url_hd;
-
-            if (!hdPic) {
-                // Agar account ki koi picture nahi hai (jaise aapka 'tuff' account)
-                throw new Error('Is profile ki koi picture nahi hai ya wo private hai.');
-            }
-
+            // Note: instagranode downloadProfilePic saves to disk, so we need the URL directly.
+            // We will use the profile object's picture URL if available.
+            // For now, we can construct the URL or use the library's internal logic.
+            // A safer approach is to use the @unavatar/core library which is built for this.
+            // Let's switch to unavatar for PFP to ensure we get a direct URL.
+            
+            // (Fallback to direct unavatar API for PFP)
+            const avatarUrl = `https://unavatar.io/instagram/${username}`;
+            
             return res.status(200).json({ 
                 status: true, 
-                result: [{ url: hdPic }] 
+                result: [{ url: avatarUrl, type: 'image' }] 
             });
         }
 
-        // --- 2. LOGIC FOR REELS, VIDEOS, AUDIO ---
-        let result = null;
-        if (platform === 'instagram') result = await igdl(url);
-        else if (platform === 'tiktok') result = await ttdl(url);
-        else if (platform === 'facebook') result = await fbdown(url);
-        else if (platform === 'twitter') result = await twitter(url);
-        else if (platform === 'youtube') result = await youtube(url);
-        else return res.status(400).json({ status: false, msg: 'Platform not supported' });
+        // --- 2. YOUTUBE AUDIO / VIDEO ---
+        if (platform === 'youtube') {
+            // Use @kelvdra/scraper for YouTube
+            let result;
+            if (url.includes('music.youtube.com') || url.includes('youtu.be') || url.includes('watch?v=')) {
+                // Try to get audio (mp3)
+                result = await ytmp3(url, 'mp3');
+            } else {
+                throw new Error('Invalid YouTube URL.');
+            }
 
-        if (!result || !result.data) {
-            throw new Error('Media extract nahi ho payi. Link private ya invalid hai.');
+            if (!result || !result.url) {
+                throw new Error('Could not extract YouTube audio.');
+            }
+
+            return res.status(200).json({ status: true, result: [{ url: result.url, type: 'audio' }] });
         }
 
-        return res.status(200).json({ status: true, result: result.data });
+        // --- 3. OTHER PLATFORMS (TikTok, Facebook, etc.) ---
+        // If you have other reliable APIs, add them here.
+        // For now, we return an error for unsupported platforms.
+        return res.status(400).json({ status: false, msg: 'This platform is not supported yet. We are working on it!' });
 
     } catch (error) {
         return res.status(500).json({ status: false, msg: error.message || 'Server Error' });
