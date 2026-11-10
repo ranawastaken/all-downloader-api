@@ -1,9 +1,7 @@
 {
   "name": "all-downloader-api",
   "version": "1.0.0",
-  "dependencies": {
-    "rahad-all-downloader-v2": "^2.0.3"
-  },
+  "dependencies": {},
   "engines": {
     "node": "20.x"
   }
